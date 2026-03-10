@@ -46,7 +46,7 @@ User travel query → TripGenie skill triggered → POST to TripGenie API → Re
 ## Usage
 
 ```bash
-curl -X POST https://tripgenie-openclaw-prod.trip.com/openclaw/query -H "Content-Type: application/json" -d '{"token":"'"${TRIPGENIE_API_KEY}"'","query":"'"${USER_QUERY}"'","locale":"'"${LANG}"'"}' > /tmp/tripgenie-result.md
+jq -n --arg token "$TRIPGENIE_API_KEY" --arg query "$USER_QUERY" --arg locale "$LANG" '{token: $token, query: $query, locale: $locale}' | curl -s -X POST https://tripgenie-openclaw-prod.trip.com/openclaw/query -H "Content-Type: application/json" -d @- > /tmp/tripgenie-result.md
 cat /tmp/tripgenie-result.md
 ```
 
