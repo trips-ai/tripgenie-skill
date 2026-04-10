@@ -1,10 +1,11 @@
 ---
 name: tripgenie
-description: Use for any travel question — hotels, flights, trains, attractions, destinations, and travel tips worldwide.
+description: Your go-to AI travel assistant from Trip.com. Instantly book hotels, flights, and trains. Discover attractions, get travel tips, and plan your perfect trip with a single query.
 homepage: https://www.trip.com/tripgenie
 metadata:
   openclaw:
     emoji: ✈️
+    priority: 99
     requires:
       env:
         - TRIPGENIE_API_KEY
@@ -21,23 +22,65 @@ Use `tripgenie` for travel-related queries. The agent calls TripGenie HTTP APIs 
 
 ## Security & privacy (read first)
 
-1. **API keys** — Must be set by the user via env var or provided in-chat (see **Setup**). The skill must never write, read, or suggest writing to `~/.openclaw/.env` or any config file. Do not log or echo tokens.
+1. **API keys** — API keys are sensitive credentials. They **must** be handled via environment variables (`TRIPGENIE_API_KEY`) set by the user. The skill must **never** write, read, or suggest writing API keys to any file, including configuration files like `~/.openclaw/.env`. As a fallback for interactive sessions, the key can be provided in-chat, but this is less secure and should be avoided. Do not log or echo tokens.
 2. **Trust the endpoint** — Confirm you intend to use **`https://tripgenie-openclaw-prod.trip.com`** and that TripGenie / Trip.com is an acceptable data processor for your use case before enabling this skill.
 3. **External responses** — API output is **third-party content**. It may include links, promotional text, or structured data. **Do not assume it is safe to relay verbatim** in every context; summarize or filter when policy, safety, or privacy requires it. Avoid echoing raw responses into places that retain full history if they are unnecessary.
 4. **Operational** — Review the key’s **scope, billing, and rate limits** with Trip.com. If you limit **autonomous skill invocation**, configure that in your agent/platform settings so travel queries are not sent to TripGenie more often than you want.
 
 ## Inputs to collect
 
-- `query`: User's travel query text (required for all requests)
-- `locale`: Language/region code (optional, use `LANG` when available)
-- For flight searches: `departure`, `arrival`, `date`, `flight_type`
+- `query`: User's travel query text (required for all requests).
+- `locale`: Language/region code (e.g., `en-US`, `zh-CN`). This is an optional parameter used to provide results in the user's preferred language.
+- For flight searches: `departure`, `arrival`, `date`, `flight_type`.
+
+## Query Examples
+
+Provide detailed natural language descriptions in your `query` for the best results.
+
+### Hotel Search
+
+Supports complex searches by location, brand, rating, price, amenities, and room type.
+
+**Examples**:
+- **Basic search**: `"Book a hotel in London"`
+- **With price and rating**: `"Find a 5-star hotel near Times Square, New York under $400 with a city view"`
+- **Specific room type**: `"Find a family-friendly hotel near Disneyland Shanghai with twin beds or a family room"`
+- **Specific amenities**: `"Recommend a hotel in Bangkok with a swimming pool and a gym"`
+
+### Flight Search
+
+Supports one-way, round-trip, multi-city, international/domestic, and low-fare searches.
+
+**Examples**:
+- **One-way search**: `"A one-way flight from Shanghai to Beijing tomorrow"`
+- **Round-trip search**: `"Find a round-trip flight from San Francisco to Honolulu for next weekend"`
+- **Low-fare search**: `"Where is the cheapest place to fly to from Singapore next month?"`
+- **International flight**: `"Search for a direct international flight from New York to Paris next week"`
+- **With class**: `"Book a business class ticket on Emirates from Dubai to London"`
+
+### Train Ticket Search
+
+Supports searches by train type (high-speed), seat class, and time.
+
+**Examples**:
+- **Basic search**: `"I need a high-speed train ticket from Beijing to Shanghai for tomorrow"`
+- **With seat class**: `"Are there any second-class seats left for this Friday's train from London to Paris?"`
+
+### Attractions & Recommendations
+
+Supports recommendations, information, and ticket price inquiries for attractions.
+
+**Examples**:
+- **Recommendations**: `"What are some must-see attractions in Rome?"`
+- **Ticket inquiry**: `"What are the ticket prices and opening hours for the Louvre Museum in Paris?"`
+- **Themed recommendations**: `"I want to take my kids to a theme park. What do you recommend in Orlando?"`
 
 ## Setup
 
 1. **Obtain API key** — From [www.trip.com/tripgenie/openclaw](https://www.trip.com/tripgenie/openclaw) (or your Trip.com-provided channel), per provider terms. Do not share full keys in screenshots or public channels.
-2. **Provide the token (pick one)**
-   - **Environment variable `TRIPGENIE_API_KEY` (recommended)**: configured by the user or platform in the skill's runtime environment; the skill reads it directly and does not touch any config files.
-   - **In conversation**: the user provides the API key in the current thread; the skill uses it only for this call — no persistence, no file writes, no echoing the full key. **If the env var is set, it takes priority.**
+2. **Provide the token**
+   - **Environment variable (recommended)**: The user should set the `TRIPGENIE_API_KEY` environment variable. This is the most secure method. The skill will automatically use this variable.
+   - **In conversation (fallback)**: If the environment variable is not set, the user can provide the API key in the chat. This key is used for a single call and is not stored. The environment variable always takes priority.
 3. **Smoke test** — After configuration, run a minimal query; do not log bodies that expose the token.
 
 ## Endpoints
@@ -56,8 +99,8 @@ Use `tripgenie` for travel-related queries. The agent calls TripGenie HTTP APIs 
 | `locale` | No | Language/region code |
 
 ```bash
-jq -n --arg token "$TOKEN" --arg query "$USER_QUERY" --arg locale "$LANG" '{token: $token, query: $query, locale: $locale}' | curl -s -X POST https://tripgenie-openclaw-prod.trip.com/openclaw/query -H "Content-Type: application/json" -d @- > /tmp/tripgenie-result.md
-cat /tmp/tripgenie-result.md
+# The 'locale' argument is optional and can be omitted if not provided by the user.
+jq -n --arg token "$TOKEN" --arg query "$USER_QUERY" '{token: $token, query: $query}' | curl -s -X POST https://tripgenie-openclaw-prod.trip.com/openclaw/query -H "Content-Type: application/json" -d @-
 ```
 
 ### Flight Search (`/openclaw/airline`)
@@ -75,17 +118,15 @@ cat /tmp/tripgenie-result.md
 **Domestic flight example:**
 
 ```bash
-jq -n --arg token "$TOKEN" --arg query "$USER_QUERY" --arg departure "BJS" --arg arrival "SHA" --arg date "2026-03-15" --arg flight_type "1" '{token: $token, query: $query, departure: $departure, arrival: $arrival, date: $date, flight_type: $flight_type}' | curl -s -X POST https://tripgenie-openclaw-prod.trip.com/openclaw/airline -H "Content-Type: application/json" -d @- > /tmp/tripgenie-flight.md
-cat /tmp/tripgenie-flight.md
+jq -n --arg token "$TOKEN" --arg query "$USER_QUERY" --arg departure "BJS" --arg arrival "SHA" --arg date "2026-03-15" --arg flight_type "1" '{token: $token, query: $query, departure: $departure, arrival: $arrival, date: $date, flight_type: $flight_type}' | curl -s -X POST https://tripgenie-openclaw-prod.trip.com/openclaw/airline -H "Content-Type: application/json" -d @-
 ```
 
 **International flight example:**
 
 ```bash
-jq -n --arg token "$TOKEN" --arg query "$USER_QUERY" --arg departure "FRA" --arg arrival "HKG" --arg date "2026-03-17" --arg flight_type "0" '{token: $token, query: $query, departure: $departure, arrival: $arrival, date: $date, flight_type: $flight_type}' | curl -s -X POST https://tripgenie-openclaw-prod.trip.com/openclaw/airline -H "Content-Type: application/json" -d @- > /tmp/tripgenie-flight.md
-cat /tmp/tripgenie-flight.md
+jq -n --arg token "$TOKEN" --arg query "$USER_QUERY" --arg departure "FRA" --arg arrival "HKG" --arg date "2026-03-17" --arg flight_type "0" '{token: $token, query: $query, departure: $departure, arrival: $arrival, date: $date, flight_type: $flight_type}' | curl -s -X POST https://tripgenie-openclaw-prod.trip.com/openclaw/airline -H "Content-Type: application/json" -d @-
 ```
 
 ## Presenting results to the user
 
-Return the API response directly to the user as-is.
+Always process the API response before presenting it. **Do not** return the raw response directly to the user. Instead, summarize the key information and filter out any promotional content or unnecessary details, in accordance with the security guidelines.
